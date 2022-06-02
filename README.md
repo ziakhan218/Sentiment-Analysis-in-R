@@ -1,0 +1,2 @@
+# Sentiment-Analysis-in-R
+Sentiment analysis is a contextual mining of text which use text analysis, natural language processing,  linguistics and biometrics to identity and extracts subjective information in sources of two books. It  helps organizations in understanding the social sentiment of their products, brands and services. In this  particular, sentiment analysis, two books treasure Island and great expectations have been thoroughly  analyzed, the responses and feelings, most positive and negative words, emotions of joy, fear, anger  have been examined.
