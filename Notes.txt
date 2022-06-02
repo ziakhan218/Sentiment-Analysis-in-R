@@ -1,0 +1,20 @@
+
+
+  Dear Professor, 
+  
+  I am attaching the following files of text analytics, sentiment-analysis-project,
+  Please find the names: 
+  
+  1) 2101142-sentiment-analysis-project.R       #Entire code
+  
+  2) 2101142-sentiment-analysis-project.Rmd     # R Mark Down file of code
+  
+  3) 2101142_Report_sentiment-analysis-project.pdf  # Report/analysis of project
+  
+  4) 2101142-RMarkDown_output_sentiment-analysis-project.pdf  # R Mark Down File output Taken
+  
+  5) Zip file containing all files with name (2101142_Text_Analytics_Sentiment_Project.rar)
+  
+  Kind Regards, 
+  Registration # 2101142
+  

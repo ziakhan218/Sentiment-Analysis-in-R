@@ -1,0 +1,808 @@
+---
+title: "Report onSentiment Analysis on two books 'Great Expectation and Treasure Island'"
+author: "Registration # 2101142"
+date: ""
+output: 
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+ Loading packages, libraries
+```{r, setup, include=FALSE, warning=FALSE}
+require(mosaic)   # Load additional packages here 
+# Package names
+    packages <- c("ggplot2", "tm", "dplyr", "tidyr", "wordcloud", "syuzhet", "reshape2", "knitr",  "scales", "stringr",  "tidyverse",  "SnowballC", "dgof")
+    
+    # Install packages not yet installed
+    installed_packages <- packages %in% rownames(installed.packages())
+    if (any(installed_packages == FALSE)) {
+      install.packages(packages[!installed_packages])
+    }
+    
+    # Packages loading
+    invisible(lapply(packages, library, character.only = TRUE))
+
+    # Cleaning the environment
+    
+    rm(list=ls())  # remove all environment variable
+    
+    
+    library(dplyr)           # used for data manipulation such as to manipulate, clean and summarize unstructured/structured data
+    library(tidytext)        # used in conversion of text to and from tidy formats
+    library(stringr)         # contains a cohesive set of functions to manipulate strings i.e str_detect, str_locate_all
+    library(tidyr)           # it contains tools for reshaping (pivoting) and hierarchy (nesting and 'unnesting') of a datase.
+    library(ggplot2)         # it is used for plotting graphs, data visulaization
+    library(ggthemes)        # used for look and feel of graphs, visualization
+    library(gutenbergr)      # a library of many texts
+    library(tm)              # text mining package used for data wrangling
+    library(SnowballC)       # used for stemming of words, i.e changing words to its root elements
+    library(textstem)        # tools for Stemming and Lemmatizing Text
+    library(wordcloud)       # it helps to analyze text and visualize keywords/text
+    library(scales)          # gives tools to override default breaks, labels and transformations etc.
+
+    
+    
+knitr::opts_chunk$set(
+  tidy=FALSE,     # display code as typed
+  warning = FALSE, 
+  message = FALSE,
+  size="small")   # slightly smaller font for code
+```
+
+
+    library(dplyr)           # used for data manipulation such as to manipulate, clean and summarize unstructured/structured data
+    library(tidytext)        # used in conversion of text to and from tidy formats
+    library(stringr)         # contains a cohesive set of functions to manipulate strings i.e str_detect, str_locate_all
+    library(tidyr)           # it contains tools for reshaping (pivoting) and hierarchy (nesting and 'unnesting') of a datase.
+    library(ggplot2)         # it is used for plotting graphs, data visulaization
+    library(ggthemes)        # used for look and feel of graphs, visualization
+    library(gutenbergr)      # a library of many texts
+    library(tm)              # text mining package used for data wrangling
+    library(SnowballC)       # used for stemming of words, i.e changing words to its root elements
+    library(textstem)        # tools for Stemming and Lemmatizing Text
+    library(wordcloud)       # it helps to analyze text and visualize keywords/text
+    library(scales)          # gives tools to override default breaks, labels and transformations etc.
+
+
+```{r}
+treasure_island  <- gutenberg_download(c(120))  # downloaded by number and assign contents to data frame
+    treasure_island 
+
+    treasure_island <- treasure_island[-c(1:110), ]  # skipping first few rows as those are irrelevant 
+    
+    data(stop_words)  # a reference tibble of stop words in tidy format 
+    stop_words
+```
+
+
+```{r}
+ treasure_island_tidy <- treasure_island %>%  # unnest i.e. convert to tidy format 
+      unnest_tokens(word, text) %>%    #this function will create collection of words and convert text to lower case and one word per row format
+      anti_join(stop_words) # removal of stop words which are not relevant to sentiment analysis
+    treasure_island_tidy
+      
+    treasure_island_tidy %>%count(word, sort = TRUE)  # count most common words
+
+```
+
+
+
+```{r}
+#visualizing most frequent words of treasure island after converting to tidy format
+    treasure_island_tidy %>%
+      count(word, sort = TRUE) %>%
+      filter(n > 100) %>%
+      mutate(word = reorder(word, n)) %>%
+      ggplot(aes(word, n)) +
+      geom_col() +
+      xlab(NULL) +
+      coord_flip()
+    
+    # custom words to be removed from text
+    custom_stop_words <- bind_rows(tibble(word = c("light", "food","don't", "it's", "you'll", "i'll",  
+                    "i'm","hand","hands",  "till", "word", "dr", "you're"),  # to add own extra stop words
+                               lexicon = c("custom")), 
+                                   stop_words)
+    custom_stop_words
+   
+    treasure_island_tidy <- treasure_island_tidy %>%
+      anti_join(custom_stop_words) # removal of custom stop words 
+    treasure_island_tidy %>%count(word, sort = TRUE)  # count most frequent words
+    
+    treasure_island_tidy
+
+```
+
+
+
+```{r}
+ #visualizing most frequent words of treasure island after removing custom words
+    treasure_island_tidy %>%
+      count(word, sort = TRUE) %>%
+      filter(n > 105) %>%
+      mutate(word = reorder(word, n)) %>%
+      ggplot(aes(word, n)) +
+      geom_col() +
+      xlab(NULL) +
+      coord_flip()
+    
+    #Exhibiting first 30 words of using Wordclound
+    treasure_island_tidy %>%
+      anti_join(custom_stop_words) %>%
+      count(word) %>%
+      with(wordcloud(word, n, max.words = 30))
+    
+    
+    # removing numbers/digits from my code
+    treasure_island_tidy <- treasure_island_tidy %>%
+      filter(!grepl('[0-9]', word))    #regular expression to remove numbers
+    treasure_island_tidy
+    
+    
+    treasure_island_tidy %>%count(word, sort = TRUE)  # count most common words after removing numbers
+
+```
+
+
+
+```{r}
+great_expectations  <- gutenberg_download(c(1400))  # Downloading great expectations book
+    great_expectations
+    
+    great_expectations_with_Skip_rows <- great_expectations[-c(1:78), ]  # skipping first 78 rows
+    
+    great_expectations_tidy <- great_expectations_with_Skip_rows %>%  # unnest i.e. convert to tidy format 
+      unnest_tokens(word, text) %>%
+      anti_join(stop_words) # removal of stop words here
+    great_expectations_tidy
+   
+    great_expectations_tidy <- great_expectations_tidy %>%
+      anti_join(custom_stop_words) # removal of custom stop words 
+    great_expectations_tidy %>%count(word, sort = TRUE)  # count most frequent/common words
+    
+    great_expectations_tidy <- great_expectations_tidy %>%
+      filter(!grepl('[0-9]', word))    # regular expression to remove numbers
+    
+    # count most common words after converting to tidy format
+    g_e_most_common <- great_expectations_tidy %>%count(word, sort = TRUE)  
+    g_e_most_common
+    
+    remove_reg <- "&amp;|&lt;|&gt;"
+   
+    custom_regex_cleansing <- great_expectations_with_Skip_rows %>%     # removing special characters 
+      mutate(text = str_remove_all(text, remove_reg)) %>%
+      unnest_tokens(word, text, token = "sentences") %>%
+      filter(!word %in% stop_words$word,
+             !word %in% str_remove_all(stop_words$word, "'"),
+             str_detect(word, "[a-z]"))
+     
+     
+     great_expectations_tidy %>%count(word, sort = TRUE)  # count most frequent/common words
+
+```
+
+
+
+```{r}
+
+     great_expectations_tidy %>%count(word, sort = TRUE)  # count most frequent/common words
+     
+     # Ploting the most frequent words
+     barplot(g_e_most_common[1:10,]$n, las = 2, names.arg = great_expectations_tidy[1:10,]$word,
+             col ="lightgreen", main ="Top 10 most frequent words",
+             ylab = "Word frequencies")
+    
+     #Displaying most frequent words using ggplot library
+     great_expectations_tidy %>%
+       count(word, sort = TRUE) %>%
+       filter(n > 200) %>%
+       mutate(word = reorder(word, n)) %>%
+       ggplot(aes(word, n)) +
+       geom_col() +
+       xlab(NULL) +
+       coord_flip()
+    
+     
+     #Displaying 40 words using wordclound
+     great_expectations_tidy %>%
+       anti_join(custom_stop_words) %>%
+       count(word) %>%
+       with(wordcloud(word, n, max.words = 40))
+
+```
+
+
+
+```{r}
+#Frequency/occurences of words and their counts and grouping words by authors, then finding proportion
+     frequency <- bind_rows(mutate(great_expectations_tidy, author = "Charles"),
+                            mutate(treasure_island_tidy, author = "Louis")) %>% 
+       mutate(word = str_extract(word, "[a-z']+")) %>%
+       count(author, word) %>%
+       group_by(author) %>%
+       mutate(proportion = n / sum(n)) %>% 
+       select(-n) %>% 
+       spread(author, proportion) %>% 
+       gather(author, proportion, 'Charles':'Louis')
+     
+     frequency %>%        #plotting author and proportion on the basis of frequency
+       ggplot(aes(x = author, y = proportion)) +
+       geom_boxplot(alpha = 0) +
+       geom_jitter(alpha = 0.5,
+                   color = "tomato",
+                   width = 0.2,
+                   height = 0.2)
+    
+    
+     # comparing the word frequencies of two books, Louis and Charles Dickens
+     # plotting  frequency and proportion where proportion(a subset of words) > 0.0050
+     frequency$word <- factor(frequency$word, 
+                              levels=unique(with(frequency, 
+                                                 word[order(proportion, word, 
+                                                            decreasing = TRUE)])))
+     frequency <- frequency[complete.cases(frequency), ]
+     
+     ggplot(aes(x = reorder(word, proportion), y = proportion, fill = author), 
+       data = subset(frequency, proportion > 0.0050)) +
+       geom_bar(stat = 'identity', position = position_dodge())+
+       coord_flip() +
+       ggtitle('Comparing the word frequencies of Louis and Charles Dickens')
+
+```
+
+
+
+```{r}
+ #Extraction chapters/parts information mostly through regular expressions
+    
+    Original_great_expectations <- great_expectations %>%
+      mutate(linenumber = row_number(),  # add cols with line and chapter 
+             chapter = cumsum(str_detect(text, 
+                                         regex("^chapter [\\divxlc]",
+                                               ignore_case = TRUE))))
+    
+    tail(Original_great_expectations)  # fetching tail part of the contents/text
+    
+    # exhibiting chapter numbers for every line of text/words
+    # applied head for minimizing the records on pdf file
+    head(cumsum(str_detect(Original_great_expectations$text, 
+                      regex("^chapter [\\divxlc]", 
+                            ignore_case = TRUE))) ) 
+    
+    
+   
+    
+    table(Original_great_expectations$chapter) # no of lines per chapter and book
+    
+    greatExp_tidy <- Original_great_expectations %>%  # unnest i.e. convert to tidy format, converting to words
+      unnest_tokens(word, text) %>%
+      anti_join(custom_stop_words) # removal of custom stop words here
+    greatExp_tidy %>%count(word, sort = TRUE) # words in desc order after counting them
+    
+    GExp_Back_to_untidy <- greatExp_tidy %>%          # converting text to untidy format by grouping them by chapter and line number
+      group_by(chapter, linenumber) %>%               # 
+      summarize(text = str_c(word, collapse = " ")) %>%   # used str_c function which join multiple strings into a single string.
+      ungroup()
+    GExp_Back_to_untidy
+
+```
+
+
+
+```{r}
+#working with regular expression to perform different operations.
+    # "^chapter [\\divxlc]" regex to locate chapter headings 
+    head(str_detect(great_expectations$text,regex("^chapter [\\divxlc]", ignore_case = TRUE)))     # chapter detection  -> using head for limited rows
+    head(great_expectations$text%>%str_subset(regex("^chapter [\\divxlc]",ignore_case = TRUE)))     # using pipes to detect chapters  -> using head for limited rows
+    sum(str_detect(great_expectations$text,regex("^chapter [\\divxlc]", ignore_case = TRUE))) # sum of chapters detected
+    head(str_subset(great_expectations$text,regex("^chapter [\\divxlc]", ignore_case = TRUE))) #-> using head for limited rows
+   
+    great_expectations$text%>%str_detect(regex("^chapter [\\divxlc]",ignore_case = TRUE))%>%table
+    
+     # tables no of lines per chapter and book
+    head(table(Original_great_expectations$linenumber,Original_great_expectations$chapter)) 
+    great_expectations_tidy$word%>%str_detect(regex("^chapter",ignore_case = TRUE))%>%table # count of chapter word
+
+```
+
+
+
+```{r}
+
+      #Exploratory data analysis using tm package
+      #tm packages used for exploratory data analysis performed below operations
+    
+      temp <- great_expectations$text
+    
+      # using tail to view just tail text as otherwise, it will fill all the pdf file with text  
+      tail(gsub(' +',' ',temp) ) 
+      tail(str_trim(temp, side = "both"))  #Removing whitespace
+      
+      text_lower <- tolower(great_expectations$text)    # Convert to lower case
+      tail(text_lower)  
+      
+      tail(gsub('[[:digit:]]+', '', temp))  #Removing numbers
+      
+      tail(gsub('[[:punct:]]', '', temp))  #Removing punctuations
+      
+      st_words <- removeWords(temp, stopwords()) #Removing stop words
+      tail(st_words)
+      
+      tail(wordStem(temp))     #Stemming 
+      
+      tail(lemmatize_words(temp))  #Lemmatization
+
+```
+
+
+
+```{r}
+ # working with sentences and sections
+     # splitting text into sentences, lines, using regular expressions
+    
+          sentences_from_treasure_island <- tibble(text = treasure_island$text) %>% 
+            unnest_tokens(sentence, text, token = "sentences")
+          
+          tibble(text = treasure_island$text) %>% 
+            unnest_tokens(line, text, token = "lines")
+    
+          tibble(text = treasure_island$text) %>%
+            unnest_tokens(chapter, text, token = "regex", pattern = "^chapter")
+          
+          tibble(text = treasure_island$text) %>% 
+            unnest_tokens(character, text, token = "characters")
+          
+          tibble(text = treasure_island$text) %>%
+            unnest_tokens(chapter, text, token = "regex", 
+                          pattern = "PART [\\dIVXLC]") %>%
+            ungroup()
+
+```
+
+
+```{r}
+      
+    # common/frequent words in two chosen books  using inner join 
+    common_words <- inner_join(great_expectations_tidy,treasure_island_tidy,by="word")
+    common_words%>%count(word, sort = TRUE)  # most common common words
+    
+    #Displaying 50 common words of two books using wordclound
+    common_words %>%
+      anti_join(custom_stop_words) %>%
+      count(word) %>%
+      with(wordcloud(word, n, max.words = 50))
+    
+    # using antijoin to find the words exclusive to each book
+    uncommon_words1 <- anti_join(great_expectations_tidy,treasure_island_tidy,by="word")
+    uncommon_Great_Expectations <-  uncommon_words1%>%count(word, sort = TRUE)
+    uncommon_Great_Expectations  # words not in the Treasure Island book
+    
+    uncommon_words2 <- anti_join(treasure_island_tidy,great_expectations_tidy,by="word")
+    uncommon_Treasure <- uncommon_words2%>%count(word, sort = TRUE)
+    uncommon_Treasure  # words not in the Great Expectations book
+    
+    
+    # treasure island words with afinn sentiment dictionary
+    get_sentiments("afinn")  # sentiment reference
+    exc_treasure_words <- uncommon_Treasure %>%inner_join(get_sentiments("afinn"),"word")
+    exc_treasure_words
+    
+    exc_treasure_words <- exc_treasure_words%>%mutate(weighted=n*value)
+    exc_treasure_words  # calc total sentiment contribution of each word
+    str(exc_treasure_words) # note 86 words exc to other book 
+    exc_treasure_sentiments <- as.numeric(exc_treasure_words$weighted)
+    
+    hist(exc_treasure_sentiments)  # distribution of the treasure island exc word sentiments 
+
+```
+
+
+```{r}
+ # the following does exactly as above for the Great Expectations book
+    # first afinn sentiment is joined with uncommon great expectation words then words are assigned weights
+    # and distribution can be checked using histogram chart
+    get_sentiments("afinn")  # sentiment reference
+    exc_great_expectations_words <- uncommon_Great_Expectations %>%inner_join(get_sentiments("afinn"),"word")
+    exc_great_expectations_words <- exc_great_expectations_words%>%mutate(weighted=n*value)
+    exc_great_expectations_words
+    str(exc_great_expectations_words)
+    exc_great_expectations_sentiments <- as.numeric(exc_great_expectations_words$weighted)
+    hist(exc_great_expectations_sentiments) # distribution of the Great Expectations exc word sentiments 
+    
+    # t test difference of means test for the two distributions 
+    t.test(exc_great_expectations_sentiments,exc_treasure_sentiments) 
+    
+    library("dgof")  # looking at the culmulative distributions 
+    cul_exc_great_exp_sentiments <- ecdf(exc_great_expectations_sentiments) 
+    plot(cul_exc_great_exp_sentiments,main="Culmulative plots",pch = c(17),ylab="",xlab="sentiment")
+    cul_exc_treasure_sentiments <- ecdf(exc_treasure_sentiments) # CDF for Treasure values
+    lines(cul_exc_treasure_sentiments,col="red",pch = c(19)) # combine in one plot 
+    abline(v=mean(exc_treasure_sentiments), col="blue") # vertical line  at Treasure mean 
+    legend("bottomleft", 
+           legend = c("Great Expectations","Treasure Island"), 
+           col = c("black","red"), 
+           pch = c(17,19), 
+           bty = "n", 
+           pt.cex = 2, 
+           cex = 1.2, 
+           text.col = "black", 
+           horiz = F , 
+           inset = c(0.1, 0.1)) # legend added to plot
+    
+    
+    
+    # kolmogorov-smirnov test for a difference in distributions
+    # kolmogorov-smirnov test(kst) compares the commulative distribution of two given sets.
+    # basically it presents the max difference between the comulative distributions
+    # it calculates the P value and samples sizes
+    # Kst has max value 1 and min 0, max value describes the best fit of the data
+    # while the min value shows the fit is not significant
+    ks.test(exc_treasure_sentiments,cul_exc_great_exp_sentiments) # p value is sig 
+    # very low p value shows that the distributions differ 
+
+```
+
+
+
+```{r}
+ 
+    # The below line of code performs the following operations
+    # sentiments dictionaries afinn, bing and nrc get loaded
+    # then sentiment related to nrc are tested for joy sentiment words,
+    # which gives information about the joy sentiment, their frequencies
+    # similary sentiments of two books have been examined on the basis of different sentiment references
+    
+    
+    #different sentiments dictionaries
+    get_sentiments("afinn")  # sentiment reference
+    get_sentiments("bing")
+    get_sentiments("nrc")
+    
+    
+    nrc_joy <- get_sentiments("nrc") %>% 
+      filter(sentiment == "joy")  # select joy sentiment words
+    nrc_joy         # result        A tibble: 687 x 2
+    
+    
+    great_expectations_tidy_sentiment_joy <- great_expectations_tidy %>%
+      inner_join(nrc_joy)   # joy words in great expectations
+    
+    great_expectations_tidy_sentiment_joy
+    
+    #Displaying first 20 words of Great expectations using wordclound
+    great_expectations_tidy_sentiment_joy %>%
+      anti_join(custom_stop_words) %>%
+      count(word) %>%
+      with(wordcloud(word, n, max.words = 20))
+    
+    great_expectations_tidy_sentiment_joy %>%
+      inner_join(nrc_joy) %>%
+      count(word, sort = TRUE)  # most popular joy words
+  
+    
+    ge_bing_sentiment <- great_expectations_tidy %>%
+      inner_join(get_sentiments("bing"),"word")
+    ge_bing_sentiment
+    
+    #  sentiment is described with bing dictionary and in the below scenario,
+    #  words list have been chosen and sentiment difference is found out
+    #  sentiment described below is positive sentiment difference negative sentiment words. 
+    ge_bing_sentiment <- great_expectations_tidy %>%  
+      inner_join(get_sentiments("bing")) %>%
+      count(gutenberg_id, index = row_number() %/% 70, sentiment)%>%     # count pos/neg over 70 words
+      pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) %>% 
+      mutate(sentiment = positive - negative)
+    ge_bing_sentiment
+
+```
+
+
+```{r}
+# visualization of sentiments difference in ggplot
+    # mostly the bing lexican sentiments are negative in great expectations
+    ggplot(ge_bing_sentiment, aes(index, sentiment, fill = gutenberg_id )) +     
+      geom_col(show.legend = FALSE) +
+      facet_wrap(~gutenberg_id , ncol = 2, scales = "free_x")
+    
+   
+    treasure_island_tidy_sentiment_joy <- treasure_island_tidy %>%
+      inner_join(nrc_joy)   # joy words in treasure Island
+    
+    treasure_island_tidy_sentiment_joy
+    
+    #Displaying first 20 words of treasure island using wordclound
+    treasure_island_tidy_sentiment_joy %>%
+      anti_join(custom_stop_words) %>%
+      count(word) %>%
+      with(wordcloud(word, n, max.words = 20))
+    
+    treasure_island_tidy_sentiment_joy %>%
+      inner_join(nrc_joy) %>%
+      count(word, sort = TRUE)  # most popular joy words
+    
+    
+    te_bing_sentiment <- treasure_island_tidy %>%
+      inner_join(get_sentiments("bing"),"word")
+    te_bing_sentiment
+    
+    #  sentiment is described with bing dictionary and in the below scenario,
+    #  words list have been chosen and sentiment difference is found out
+    #  sentiment described below is positive sentiment difference negative sentiment words. 
+    te_bing_sentiment <- treasure_island_tidy %>%  
+      inner_join(get_sentiments("bing")) %>%
+      count(gutenberg_id, index = row_number() %/% 70, sentiment)%>%     # count pos/neg over 70 words
+      pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) %>% 
+      mutate(sentiment = positive - negative)
+    te_bing_sentiment
+    
+    # visualization of sentiments difference in ggplot
+    ggplot(te_bing_sentiment, aes(index, sentiment, fill = gutenberg_id )) +     
+      geom_col(show.legend = FALSE) +
+      facet_wrap(~gutenberg_id , ncol = 2, scales = "free_x")
+    
+    # For both books bing lexicon sentiments are almost negative
+
+```
+
+
+```{r}
+ 
+    treasure_island_bigrams <- tibble(text = treasure_island$text) %>% 
+      unnest_tokens(bigram, text, token = "ngrams", n = 2)  # using the bigram option 
+    treasure_island_bigrams
+    
+    treasure_island_bigrams %>%count(bigram, sort = TRUE) # most popular bigrams are stop word pairs
+    
+   
+    
+    bigrams_separated <- treasure_island_bigrams %>%
+      separate(bigram, c("word1", "word2"), sep = " ") # separates the bigram in 2 cols
+    bigrams_separated
+    
+    bigrams_filtered <- bigrams_separated %>%
+      filter(!word1 %in% stop_words$word) %>%  # removes via single stop words
+      filter(!word2 %in% stop_words$word)
+    bigrams_filtered
+    
+    # new bigram counts:
+    bigram_counts <- bigrams_filtered %>%count(word1, word2, sort = TRUE)
+    bigram_counts
+    
+    bigrams_united <- bigrams_filtered %>%
+      unite(bigram, word1, word2, sep = " ")
+    bigrams_united  # can be used to recombine into a bigram
+    
+    bigrams_separated %>%
+      filter(word1 == "not") %>%  # count cases of negation , changing the sentiment
+      count(word1, word2, sort = TRUE)
+    
+    AFINN <- get_sentiments("afinn")
+    AFINN
+    
+    not_words <- bigrams_separated %>%
+      filter(word1 == "not") %>%
+      inner_join(AFINN, by = c(word2 = "word")) %>%
+      count(word2, value, sort = TRUE)
+    not_words
+    
+    not_words %>%
+      mutate(contribution = n * value) %>%  # these sentiments are faulty
+      arrange(desc(abs(contribution))) %>%
+      head(20)
+
+```
+
+
+```{r}
+not_words %>%
+      mutate(contribution = n * value) %>%
+      arrange(desc(abs(contribution))) %>%
+      head(20) %>%
+      mutate(word2 = reorder(word2, contribution)) %>%  # can pipe above to ggplot
+      ggplot(aes(n * value, word2, fill = n * value > 0)) +
+      geom_col(show.legend = FALSE) +
+      labs(x = "Sentiment value * number of occurrences",
+           y = "Words preceded by \"not\"")
+    
+    negation_words <- c("not", "no", "never", "without") # more negation words
+    
+    negated_words <- bigrams_separated %>%
+      filter(word1 %in% negation_words) %>%  # filter for the set of negation words
+      inner_join(AFINN, by = c(word2 = "word")) %>%
+      count(word1, word2, value, sort = TRUE)
+    boxplot(negated_words$value)  
+    # The box plot is suggesting that most of the bigrams are positive when 
+    # first word is in negation words. 
+    
+    
+    treasure_and_great_expectations <- gutenberg_download(c(120, 1400))
+    
+    tidy_treasure_and_great_expectations <- treasure_and_great_expectations %>%
+      unnest_tokens(word, text) %>%
+      anti_join(stop_words)
+    tidy_treasure_and_great_expectations %>%  count(word, sort = TRUE)
+    
+  
+    
+    bind_rows(mutate(great_expectations_tidy, author = "A"), # binding by rows produces NAs
+              mutate(treasure_island_tidy, author = "B")) %>% 
+      mutate(word = str_extract(word, "[a-z']+")) %>% 
+      count(author, word) %>%
+      group_by(author) %>%
+      mutate(proportion = n / sum(n))%>%  # the values are proportions of word per author
+      select(-n)%>% 
+      pivot_wider(names_from = author, values_from = proportion) # non tidy authors are in the col names 
+
+```
+
+
+
+```{r}
+ frequency <- bind_rows(mutate(great_expectations_tidy, author = "A"), 
+                           mutate(treasure_island_tidy, author = "B")) %>% 
+      mutate(word = str_extract(word, "[a-z']+")) %>%
+      count(author, word) %>%
+      group_by(author) %>%
+      mutate(proportion = n / sum(n)) %>% 
+      select(-n) %>% 
+      pivot_wider(names_from = author, values_from = proportion) %>%
+      pivot_longer('A':'B', # addition to the pipe selects two authors
+                   names_to = "author", values_to = "proportion")
+    
+    frequency
+    
+    
+    bingnegative <- get_sentiments("bing") %>%   # list of negative words from the Bing lexicon. 
+      filter(sentiment == "negative")
+    head(bingnegative)
+    table(bingnegative$sentiment) # 4781  negative words
+   
+    great_expectations_tidy
+    bingnegative
+    
+    great_expectations_tidy %>%semi_join(bingnegative) # negative words in the book
+    
+    great_expectations_tidy %>%
+      semi_join(bingnegative) %>%  # 
+      group_by(gutenberg_id, word) %>%
+      summarize(negativewords = n())  # count neg words by chapt  and book
+
+```
+
+
+```{r}
+
+    #analysis of bing, nrc and afinn lexicals
+    # It can be observed from the graphs that Afinn and Bing words are more negative
+    # NRC words are more positive 
+    # The above results are for the book great expectations. 
+     afinn <- great_expectations_tidy %>% 
+       inner_join(get_sentiments("afinn")) %>% 
+       group_by(index = row_number() %/% 100) %>% 
+       summarise(sentiment = sum(value)) %>% 
+       mutate(method = "AFINN")
+     
+     bing_and_nrc <- bind_rows(
+       great_expectations_tidy %>% 
+         inner_join(get_sentiments("bing")) %>%
+         mutate(method = "Bing"),
+       great_expectations_tidy %>% 
+         inner_join(get_sentiments("nrc") %>% 
+                      filter(sentiment %in% c("positive", 
+                                              "negative"))
+         ) %>%
+         mutate(method = "NRC")) %>%
+       count(method, index = row_number() %/% 100, sentiment) %>%
+       pivot_wider(names_from = sentiment,
+                   values_from = n,
+                   values_fill = 0) %>% 
+       mutate(sentiment = positive - negative)
+     
+     bind_rows(afinn, 
+               bing_and_nrc) %>%
+       ggplot(aes(index, sentiment, fill = method)) +
+       geom_col(show.legend = FALSE) +
+       facet_wrap(~method, ncol = 1, scales = "free_y")
+
+```
+
+
+```{r}
+# Calculating positive and negative words for understanding the difference between 3 dictionaries
+     
+     get_sentiments("nrc") %>% 
+       filter(sentiment %in% c("positive", "negative")) %>% 
+       count(sentiment)
+           #  negative   3318
+           #  positive   2308
+     
+     
+     get_sentiments("bing") %>% 
+       count(sentiment) # negative lexicons have higher values in bing as compared to NRC 
+           #  negative   4781
+           #  positive   2005
+     
+     #counting bing words
+     
+     bing_word_counts <- great_expectations_tidy %>%
+       inner_join(get_sentiments("bing")) %>%
+       count(word, sentiment, sort = TRUE) %>%
+       ungroup()
+     
+     bing_word_counts
+     
+     #Results
+     # It is observed that bing has more negative lexicons than nrc
+     # Hence we can get more clear picture when using bing lexicon
+     
+     #contribution to sentiment graph plotting 
+     # It can be observed that words are negatively skewed
+     bing_word_counts %>%
+       group_by(sentiment) %>%
+       slice_max(n, n = 10) %>% 
+       ungroup() %>%
+       mutate(word = reorder(word, n)) %>%
+       ggplot(aes(n, word, fill = sentiment)) +
+       geom_col(show.legend = FALSE) +
+       facet_wrap(~sentiment, scales = "free_y") +
+       labs(x = "Contribution to sentiment",
+            y = NULL)
+     # it can be seen clearly that bing has comparitvely more negative words than positve 
+
+```
+
+
+```{r}
+
+     #Positive and negative words of both books using bing dictionary
+     
+     great_expectations_tidy %>%   #positive and negative words of great expectations
+       inner_join(get_sentiments("bing")) %>%
+       count(word, sentiment, sort = TRUE) %>%
+       acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+       comparison.cloud(colors = c("gray20", "gray80"),
+                        max.words = 100)
+     
+     treasure_island_tidy %>%  #positive and negative words of treasure Island
+       inner_join(get_sentiments("bing")) %>%
+       count(word, sentiment, sort = TRUE) %>%
+       acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+       comparison.cloud(colors = c("gray20", "gray80"),
+                        max.words = 100)
+    
+    
+    #---------------------The End--------------------------------------#
+
+```
+
+
+
+```{r}
+
+
+```
+
+
+```{r}
+
+
+```
+
+
+```{r}
+
+
+```
+
+
+
+
+
+  
